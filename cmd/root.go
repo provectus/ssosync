@@ -18,14 +18,16 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"os"
-
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	"github.com/awslabs/ssosync/internal"
 	"github.com/awslabs/ssosync/internal/config"
+	"os"
+	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/secretsmanager"
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -79,6 +81,18 @@ func init() {
 	cfg = config.New()
 	cfg.IsLambda = len(os.Getenv("_LAMBDA_SERVER_PORT")) > 0
 
+	awscfg, err := awsconfig.LoadDefaultConfig(context.TODO(),
+		awsconfig.WithRetryer(func() aws.Retryer {
+			return retry.AddWithMaxAttempts(retry.NewStandard(), 5)
+		}),
+		awsconfig.WithRetryer(func() aws.Retryer {
+			return retry.AddWithMaxBackoffDelay(retry.NewStandard(), time.Second*5)
+		}),
+	)
+	if err != nil {
+		log.Fatalf("unable to load SDK config, %v", err)
+	}
+	cfg.AWSConfig = awscfg
 	// initialize cobra
 	cobra.OnInitialize(initConfig)
 	addFlags(rootCmd, cfg)
@@ -99,16 +113,14 @@ func initConfig() {
 	appEnvVars := []string{
 		"google_admin",
 		"google_credentials",
-		"scim_access_token",
-		"scim_endpoint",
 		"log_level",
 		"log_format",
 		"ignore_users",
 		"ignore_groups",
-		"include_groups",
 		"user_match",
 		"group_match",
 		"sync_method",
+		"identity_store_id",
 	}
 
 	for _, e := range appEnvVars {
@@ -130,8 +142,7 @@ func initConfig() {
 }
 
 func configLambda() {
-	s := session.Must(session.NewSession())
-	svc := secretsmanager.New(s)
+	svc := secretsmanager.NewFromConfig(cfg.AWSConfig)
 	secrets := config.NewSecrets(svc)
 
 	unwrap, err := secrets.GoogleAdminEmail()
@@ -145,18 +156,6 @@ func configLambda() {
 		log.Fatalf(errors.Wrap(err, "cannot read config").Error())
 	}
 	cfg.GoogleCredentials = unwrap
-
-	unwrap, err = secrets.SCIMAccessToken()
-	if err != nil {
-		log.Fatalf(errors.Wrap(err, "cannot read config").Error())
-	}
-	cfg.SCIMAccessToken = unwrap
-
-	unwrap, err = secrets.SCIMEndpointUrl()
-	if err != nil {
-		log.Fatalf(errors.Wrap(err, "cannot read config").Error())
-	}
-	cfg.SCIMEndpoint = unwrap
 }
 
 func addFlags(cmd *cobra.Command, cfg *config.Config) {
@@ -164,16 +163,13 @@ func addFlags(cmd *cobra.Command, cfg *config.Config) {
 	rootCmd.PersistentFlags().BoolVarP(&cfg.Debug, "debug", "d", config.DefaultDebug, "enable verbose / debug logging")
 	rootCmd.PersistentFlags().StringVarP(&cfg.LogFormat, "log-format", "", config.DefaultLogFormat, "log format")
 	rootCmd.PersistentFlags().StringVarP(&cfg.LogLevel, "log-level", "", config.DefaultLogLevel, "log level")
-	rootCmd.Flags().StringVarP(&cfg.SCIMAccessToken, "access-token", "t", "", "AWS SSO SCIM API Access Token")
-	rootCmd.Flags().StringVarP(&cfg.SCIMEndpoint, "endpoint", "e", "", "AWS SSO SCIM API Endpoint")
 	rootCmd.Flags().StringVarP(&cfg.GoogleCredentials, "google-credentials", "c", config.DefaultGoogleCredentials, "path to Google Workspace credentials file")
 	rootCmd.Flags().StringVarP(&cfg.GoogleAdmin, "google-admin", "u", "", "Google Workspace admin user email")
 	rootCmd.Flags().StringSliceVar(&cfg.IgnoreUsers, "ignore-users", []string{}, "ignores these Google Workspace users")
 	rootCmd.Flags().StringSliceVar(&cfg.IgnoreGroups, "ignore-groups", []string{}, "ignores these Google Workspace groups")
-	rootCmd.Flags().StringSliceVar(&cfg.IncludeGroups, "include-groups", []string{}, "include only these Google Workspace groups, NOTE: only works when --sync-method 'users_groups'")
 	rootCmd.Flags().StringVarP(&cfg.UserMatch, "user-match", "m", "", "Google Workspace Users filter query parameter, example: 'name:John* email:admin*', see: https://developers.google.com/admin-sdk/directory/v1/guides/search-users")
 	rootCmd.Flags().StringVarP(&cfg.GroupMatch, "group-match", "g", "", "Google Workspace Groups filter query parameter, example: 'name:Admin* email:aws-*', see: https://developers.google.com/admin-sdk/directory/v1/guides/search-groups")
-	rootCmd.Flags().StringVarP(&cfg.SyncMethod, "sync-method", "s", config.DefaultSyncMethod, "Sync method to use (users_groups|groups)")
+	rootCmd.Flags().StringVarP(&cfg.IdentityStoreId, "identity-store-id", "i", "", "Identity Store Id in AWS")
 }
 
 func logConfig(cfg *config.Config) {

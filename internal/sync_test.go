@@ -15,6 +15,7 @@
 // Package internal ...
 package internal
 
+/*
 import (
 	"encoding/json"
 	"log"
@@ -351,3 +352,4 @@ func Test_getGroupUsersOperations(t *testing.T) {
 		})
 	}
 }
+*/

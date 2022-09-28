@@ -1,19 +1,20 @@
 package config
 
 import (
+	"context"
 	"encoding/base64"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/secretsmanager"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 )
 
 // Secrets ...
 type Secrets struct {
-	svc *secretsmanager.SecretsManager
+	svc *secretsmanager.Client
 }
 
 // NewSecrets ...
-func NewSecrets(svc *secretsmanager.SecretsManager) *Secrets {
+func NewSecrets(svc *secretsmanager.Client) *Secrets {
 	return &Secrets{
 		svc: svc,
 	}
@@ -24,26 +25,18 @@ func (s *Secrets) GoogleAdminEmail() (string, error) {
 	return s.getSecret("SSOSyncGoogleAdminEmail")
 }
 
-// SCIMAccessToken ...
-func (s *Secrets) SCIMAccessToken() (string, error) {
-	return s.getSecret("SSOSyncSCIMAccessToken")
-}
-
-// SCIMEndpointUrl ...
-func (s *Secrets) SCIMEndpointUrl() (string, error) {
-	return s.getSecret("SSOSyncSCIMEndpointUrl")
-}
-
 // GoogleCredentials ...
 func (s *Secrets) GoogleCredentials() (string, error) {
 	return s.getSecret("SSOSyncGoogleCredentials")
 }
 
 func (s *Secrets) getSecret(secretKey string) (string, error) {
-	r, err := s.svc.GetSecretValue(&secretsmanager.GetSecretValueInput{
-		SecretId:     aws.String(secretKey),
-		VersionStage: aws.String("AWSCURRENT"),
-	})
+	r, err := s.svc.GetSecretValue(
+		context.TODO(),
+		&secretsmanager.GetSecretValueInput{
+			SecretId:     aws.String(secretKey),
+			VersionStage: aws.String("AWSCURRENT"),
+		})
 
 	if err != nil {
 		return "", err

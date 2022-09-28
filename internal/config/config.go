@@ -1,6 +1,8 @@
 // Package config ...
 package config
 
+import "github.com/aws/aws-sdk-go-v2/aws"
+
 // Config ...
 type Config struct {
 	// Verbose toggles the verbosity
@@ -17,20 +19,16 @@ type Config struct {
 	UserMatch string `mapstructure:"user_match"`
 	// GroupFilter ...
 	GroupMatch string `mapstructure:"group_match"`
-	// SCIMEndpoint ....
-	SCIMEndpoint string `mapstructure:"scim_endpoint"`
-	// SCIMAccessToken ...
-	SCIMAccessToken string `mapstructure:"scim_access_token"`
+	// IdentityStoreId ...
+	IdentityStoreId string `mapstructure:"identity_store_id"`
 	// IsLambda ...
 	IsLambda bool
+	// AWS Configuration
+	AWSConfig aws.Config
 	// Ignore users ...
 	IgnoreUsers []string `mapstructure:"ignore_users"`
 	// Ignore groups ...
 	IgnoreGroups []string `mapstructure:"ignore_groups"`
-	// Include groups ...
-	IncludeGroups []string `mapstructure:"include_groups"`
-	// SyncMethod allow to defined the sync method used to get the user and groups from Google Workspace
-	SyncMethod string `mapstructure:"sync_method"`
 }
 
 const (
@@ -42,8 +40,6 @@ const (
 	DefaultDebug = false
 	// DefaultGoogleCredentials is the default credentials path
 	DefaultGoogleCredentials = "credentials.json"
-	// DefaultSyncMethod is the default sync method to use.
-	DefaultSyncMethod = "groups"
 )
 
 // New returns a new Config
@@ -52,7 +48,6 @@ func New() *Config {
 		Debug:             DefaultDebug,
 		LogLevel:          DefaultLogLevel,
 		LogFormat:         DefaultLogFormat,
-		SyncMethod:        DefaultSyncMethod,
 		GoogleCredentials: DefaultGoogleCredentials,
 	}
 }
