@@ -9,12 +9,10 @@ Metadata:
         Parameters:
           - GoogleCredentials
           - GoogleAdminEmail
-          - SCIMEndpointUrl
-          - SCIMEndpointAccessToken
+          - IdentityStoreId
       - Label:
           default: "Advanced Configuration"
         Parameters:
-          - SyncMethod
           - GoogleUserMatch
           - GoogleGroupMatch
           - LogLevel
@@ -32,7 +30,7 @@ Metadata:
     # paths are relative to .aws-sam/build directory
     LicenseUrl: LICENSE
     ReadmeUrl: SAR.md
-    Labels: [serverless, sso, lambda, scim]
+    Labels: [serverless, sso, lambda]
     HomePageUrl: https://github.com/awslabs/ssosync
     # Update the semantic version and run sam publish to publish a new version of your app
     SemanticVersion: 1.0.0-rc.10
@@ -71,14 +69,6 @@ Parameters:
     Type: String
     Description: Google Admin email
     NoEcho: true
-  SCIMEndpointUrl:
-    Type: String
-    Description: AWS SSO SCIM Endpoint Url
-    NoEcho: true
-  SCIMEndpointAccessToken:
-    Type: String
-    Description: AWS SSO SCIM AccessToken
-    NoEcho: true
   GoogleUserMatch:
     Type: String
     Description: |
@@ -97,18 +87,11 @@ Parameters:
       Ignore these Google Workspace users
   IncludeGroups:
     Type: String
-    Description: | 
+    Description: |
       Include only these Google Workspace groups. (Only applicable for SyncMethod user_groups)
-  SyncMethod:
+  IdentityStoreId:
     Type: String
-    Description: Sync method to use
-    Default: groups
-    AllowedValues:
-      - groups
-      - users_groups
-      
-      
-      
+    Description: Identity store id
 
 Resources:
   SSOSyncFunction:
@@ -123,14 +106,12 @@ Resources:
           SSOSYNC_LOG_FORMAT: !Ref LogFormat
           SSOSYNC_GOOGLE_CREDENTIALS: !Ref AWSGoogleCredentialsSecret
           SSOSYNC_GOOGLE_ADMIN: !Ref AWSGoogleAdminEmail
-          SSOSYNC_SCIM_ENDPOINT: !Ref AWSSCIMEndpointSecret
-          SSOSYNC_SCIM_ACCESS_TOKEN: !Ref AWSSCIMAccessTokenSecret
           SSOSYNC_USER_MATCH: !Ref GoogleUserMatch
           SSOSYNC_GROUP_MATCH: !Ref GoogleGroupMatch
-          SSOSYNC_SYNC_METHOD: !Ref SyncMethod
           SSOSYNC_IGNORE_GROUPS: !Ref IgnoreGroups
           SSOSYNC_IGNORE_USERS: !Ref IgnoreUsers
           SSOSYNC_INCLUDE_GROUPS: !Ref IncludeGroups
+          SSOSYNC_IDENTITY_STORE_ID: !Ref IdentityStoreId
       Policies:
         - Statement:
             - Sid: SSMGetParameterPolicy
@@ -140,8 +121,12 @@ Resources:
               Resource:
                 - !Ref AWSGoogleCredentialsSecret
                 - !Ref AWSGoogleAdminEmail
-                - !Ref AWSSCIMEndpointSecret
-                - !Ref AWSSCIMAccessTokenSecret
+            - Sid: IdentityStorePolicy
+              Effect: Allow
+              Action:
+                - "identitystore:*"
+              Resource:
+                - "*"
       Events:
         SyncScheduledEvent:
           Type: Schedule
@@ -161,15 +146,3 @@ Resources:
     Properties:
       Name: SSOSyncGoogleAdminEmail
       SecretString: !Ref GoogleAdminEmail
-
-  AWSSCIMEndpointSecret: # This can be moved to custom provider
-    Type: "AWS::SecretsManager::Secret"
-    Properties:
-      Name: SSOSyncSCIMEndpointUrl
-      SecretString: !Ref SCIMEndpointUrl
-
-  AWSSCIMAccessTokenSecret: # This can be moved to custom provider
-    Type: "AWS::SecretsManager::Secret"
-    Properties:
-      Name: SSOSyncSCIMAccessToken
-      SecretString: !Ref SCIMEndpointAccessToken

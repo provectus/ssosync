@@ -119,7 +119,6 @@ func initConfig() {
 		"ignore_groups",
 		"user_match",
 		"group_match",
-		"sync_method",
 		"identity_store_id",
 	}
 

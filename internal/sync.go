@@ -191,7 +191,8 @@ func (s *syncGSuite) SyncGroups(query string, usersSyncResult *UserSyncResult) e
 	groupsIndex := make(map[string]*types.Group)
 	var groupsToDelete []*types.Group
 	for _, u := range awsGroups {
-		groupsIndex[*u.DisplayName] = &u
+		grp := u
+		groupsIndex[awsutils.ToString(u.DisplayName)] = &grp
 	}
 
 	log.WithField("query", query).Debug("get google groups")
