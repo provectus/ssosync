@@ -227,9 +227,10 @@ func (s *syncGSuite) SyncGroups(query string, usersSyncResult *UserSyncResult) e
 	}
 
 	for _, g := range awsGroups {
+		grp := g
 		_, isExists := googleGroupsIndex[awsutils.ToString(g.DisplayName)]
 		if isExists == false {
-			groupsToDelete = append(groupsToDelete, &g)
+			groupsToDelete = append(groupsToDelete, &grp)
 			delete(groupsIndex, awsutils.ToString(g.DisplayName))
 		}
 	}
