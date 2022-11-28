@@ -227,9 +227,9 @@ func (s *syncGSuite) SyncGroups(query string, usersSyncResult *UserSyncResult) e
 	}
 
 	for _, g := range awsGroups {
-		grp := g
 		_, isExists := googleGroupsIndex[awsutils.ToString(g.DisplayName)]
 		if isExists == false {
+			grp := g
 			groupsToDelete = append(groupsToDelete, &grp)
 			delete(groupsIndex, awsutils.ToString(g.DisplayName))
 		}
@@ -278,17 +278,18 @@ func (s *syncGSuite) SyncMembershipsForGroup(googleGroup *admin.Group, awsGroup 
 
 	var toDelete []*types.GroupMembership
 	for _, m := range awsMembers {
+		awsMember := m
 		userId, ok := m.MemberId.(*types.MemberIdMemberUserId)
 		if ok != true {
 			ll.Error("Cast mismatch error")
 		}
 		user, exists := usersSyncResult.indexByUserId[userId.Value]
 		if exists == false {
-			toDelete = append(toDelete, &m)
+			toDelete = append(toDelete, &awsMember)
 		} else {
 			_, has := memberList[awsutils.ToString(user.UserName)]
 			if has == false {
-				toDelete = append(toDelete, &m)
+				toDelete = append(toDelete, &awsMember)
 			}
 			delete(memberList, awsutils.ToString(user.UserName))
 		}
