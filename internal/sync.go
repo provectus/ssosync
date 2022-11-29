@@ -230,7 +230,7 @@ func (s *syncGSuite) SyncGroups(query string, usersSyncResult *UserSyncResult) e
 		_, isExists := googleGroupsIndex[awsutils.ToString(g.DisplayName)]
 		if isExists == false {
 			grp := g
-
+			log.WithField("group", grp.DisplayName).Info("Group added to delete")
 			groupsToDelete = append(groupsToDelete, &grp)
 			delete(groupsIndex, awsutils.ToString(g.DisplayName))
 		}
@@ -245,6 +245,7 @@ func (s *syncGSuite) SyncGroups(query string, usersSyncResult *UserSyncResult) e
 	}
 
 	for _, g := range groupsToDelete {
+		log.WithField("group", g.DisplayName).Info("Delete group in AWS")
 		err := s.aws.DeleteGroup(g)
 		if err != nil {
 			return err
@@ -308,6 +309,7 @@ func (s *syncGSuite) SyncMembershipsForGroup(googleGroup *admin.Group, awsGroup 
 	}
 
 	for _, element := range memberList {
+		ll.WithField("", element.UserName).Info("User add")
 		_, err := s.aws.AddUserToGroup(element, awsGroup)
 		if err != nil {
 			ll.Error("Can't add User to the group: ", err)
